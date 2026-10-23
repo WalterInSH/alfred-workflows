@@ -1,0 +1,16 @@
+# macOS metadata
+.DS_Store
+._*
+__MACOS/
+
+# Generated workflow packages
+*.alfredworkflow
+**/dist/
+
+# Local Python caches and environments
+__pycache__/
+*.py[cod]
+.venv/
+
+# Temporary installation audit snapshots
+existing-config-sha256.json
