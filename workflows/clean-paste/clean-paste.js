@@ -32,6 +32,7 @@ function run(args) {
     ObjC.import('AppKit');
     var pb = $.NSPasteboard.generalPasteboard;
     var ownedCount = null;
+    var transientType = $('org.nspasteboard.TransientType');
     // Keep NSPasteboardItem references inside a native Objective-C collection.
     var backup = $.NSMutableArray.alloc.init;
     var originalCount;
@@ -51,6 +52,11 @@ function run(args) {
             return;
         }
         try {
+            // Preserve the original formats; mark the restored item as transient too,
+            // so clipboard managers do not add another copy on restoration.
+            var first = backup.objectAtIndex(0);
+            if (!first.types.containsObject(transientType) &&
+                !first.setDataForType($.NSData.data, transientType)) throw Error('Cannot mark restoration transient');
             pb.clearContents;
             if (!pb.writeObjects(backup)) throw Error('Restore write failed');
             var restoreCount = Number(pb.changeCount);
@@ -115,9 +121,14 @@ function run(args) {
             Number($.NSWorkspace.sharedWorkspace.frontmostApplication.processIdentifier) !== targetPID) return stop('clipboard or focused application changed');
 
         stage = 'write plain text';
+        var temporary = $.NSPasteboardItem.alloc.init;
+        if (!temporary.setStringForType($(cleaned), $.NSPasteboardTypeString) ||
+            !temporary.setDataForType($.NSData.data, transientType)) throw Error('Cannot prepare temporary text');
+        var temporaryItems = $.NSMutableArray.alloc.init;
+        temporaryItems.addObject(temporary);
         pb.clearContents;
         ownedCount = Number(pb.changeCount);
-        if (!pb.setStringForType($(cleaned), $.NSPasteboardTypeString)) throw Error('Cannot write plain text');
+        if (!pb.writeObjects(temporaryItems)) throw Error('Cannot write plain text');
         ownedCount = Number(pb.changeCount);
         if (Number($.NSWorkspace.sharedWorkspace.frontmostApplication.processIdentifier) !== targetPID) return stop('focused application changed before paste');
         stage = 'send paste command';
